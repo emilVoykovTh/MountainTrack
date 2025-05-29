@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <!-- Fullscreen Google Map Fragment -->
+    <fragment
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+
+    <!-- Bottom Sheet (initially hidden, draggable up) -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/bottom_sheet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fillViewport="true"
+        android:background="#FFEEEEEE"
+        android:elevation="16dp"
+        android:clipToPadding="false"
+        android:padding="16dp"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:animateLayoutChanges="true">
+
+            <!-- Drag handle -->
+            <View
+                android:id="@+id/drag_handle"
+                android:layout_width="40dp"
+                android:layout_height="6dp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="16dp"
+                android:background="@android:color/darker_gray"
+                android:backgroundTint="@color/black" />
+            <!-- Buttons Group -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="5dp"
+                android:gravity="center">
+
+                <!-- Start/Stop/View buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <Button
+                        android:id="@+id/btnStart"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="16sp"
+                        android:backgroundTint="#43A047"
+                        android:text="@string/start_hike" />
+
+                    <Button
+                        android:id="@+id/btnStop"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/stop_hike"
+                        android:textSize="16sp"
+                        android:backgroundTint="#D81B60"
+
+                        android:layout_marginStart="8dp" />
+
+                    <Button
+                        android:id="@+id/btnViewTrack"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/view_track"
+                        android:backgroundTint="#6F6F6F"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
+
+                <!-- Camera button -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <ImageButton
+                        android:id="@+id/btnTakePhoto"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@android:color/transparent"
+                        android:src="@drawable/ic_photo_camera"
+                        android:contentDescription="@string/take_a_photo"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
+
+                <!-- Trail Info & Find Trails -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tvTrailInfo"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/help_info_default"
+                        android:textSize="16sp"
+                        android:paddingTop="12dp"
+                        android:layout_marginStart="8dp"
+                        android:textColor="#333" />
+
+                    <Button
+                        android:id="@+id/btnFindTrails"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/find_trails"
+                        android:textSize="20sp"
+                        android:backgroundTint="#1E88E5"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
