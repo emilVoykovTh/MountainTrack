@@ -14,6 +14,10 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
+import android.text.Editable;
+import android.text.InputFilter;
+import android.text.TextWatcher;
+import android.view.Gravity;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -92,7 +96,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private LatLng lastStablePosition = null;
     private long lastMovementTimestamp = 0L;
     private long totalBreakTimeMillis = 0L;
-    private boolean isOnBreak = false;
+    private boolean isOnBreak = false, wasOnTrail = true;
+    ;
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -210,32 +215,33 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 for (Location location : locationResult.getLocations()) {
-                    if (location == null || !isTracking) continue;
-
-                    if (!location.hasAccuracy() || location.getAccuracy() > 10.0f) continue;
-
-                    if (location.hasSpeed() && location.getSpeed() > 0.3f) { // Filter out noise ( < 0.3 m/s)
-                        speedSamples.add(location.getSpeed()); // in m/s
-                    }
-
-                    if (lastKnownLocation != null) {
-                        float distance = location.distanceTo(lastKnownLocation);
-                        if (distance < 3.0f && location.getSpeed() < 0.5f) {
-                            continue; // Skip GPS noise
+                    if (location == null || !isTracking) {
+                        continue;
+                    } else {
+                        if (!location.hasAccuracy() || location.getAccuracy() > 10.0f) continue;
+                        if (location.hasSpeed() && location.getSpeed() > 0.25f) { // Filter out noise ( < 0.25 m/s)
+                            speedSamples.add(location.getSpeed()); // in m/s
                         }
-                    }
 
-                    if (location != null && isTracking) {
+                        if (lastKnownLocation != null) {
+                            float distance = location.distanceTo(lastKnownLocation);
+                            if (distance < 2.0f && location.getSpeed() < 0.25f) {
+                                continue; // Skip GPS noise
+                            }
+                        }
+
                         double lat = location.getLatitude();
                         double lng = location.getLongitude();
                         double alt = location.getAltitude();
                         LatLng latLng = new LatLng(lat, lng);
                         lastKnownLocation = location;
+                        showUserMarker(lastKnownLocation);
+                        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18f));
 
                         if (selectedTrailPointList != null && !selectedTrailPointList.isEmpty()) {
-                            float remainingDistance = calculateRemainingDistanceFromCurrent(lastKnownLocation, selectedTrailPointList);
-                            String eta = estimateTimeForTrail(remainingDistance);
+                            float remainingDistance = calculateRemainingDistanceFromCurrentLocation(lastKnownLocation, selectedTrailPointList);
                             handleBreakDetection(lastKnownLocation);
+                            String eta = estimateTimeForTrail(remainingDistance);
                             updateTrailInfoUI(distanceOfSelectedTrail, remainingDistance, eta, totalBreakTimeMillis);
                         }
                         // Check if current location is close to selected trail
@@ -245,13 +251,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             currentOnTrailPolylineOptions.add(latLng);
                             if (currentOnTrailPolyline != null) currentOnTrailPolyline.remove();
                             currentOnTrailPolyline = mMap.addPolyline(currentOnTrailPolylineOptions);
+
+                            wasOnTrail = true; // Update state
                         } else {
+                            if (wasOnTrail) {
+                                // Just switched from on-trail to off-trail
+                                offTrailPolylineOptions = new PolylineOptions()
+                                        .color(Color.RED)
+                                        .width(10f);
+                            }
+
                             offTrailPolylineOptions.add(latLng);
                             if (offTrailPolyline != null) offTrailPolyline.remove();
                             offTrailPolyline = mMap.addPolyline(offTrailPolylineOptions);
-                        }
 
-                        showUserMarker(location);
+                            wasOnTrail = false; // Update state
+                        }
 
                         long currentTime = System.currentTimeMillis();
 
@@ -302,10 +317,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     /**
      * This function checks if a location is within the ON_TRAIL_DISTANCE_THRESHOLD to any points of the selected
      * trail.
-     * @param location - the location that needs to be compared
      *
+     * @param location - the location that needs to be compared
      * @return true- if within the threshold or if the no trail was selected
-     * */
+     */
     private boolean isLocationNearSelectedTrail(LatLng location) {
         if (selectedTrailPointList == null || selectedTrailPointList.isEmpty()) {
             return true; // No selected trail, so always "on trail"
@@ -329,13 +344,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     /**
      * Calculates the shortest distance in meters from a given point  (p) to the line segment defined by points
      * (start) and (end), using distance via Android's Location distanceBetween() method.
-     *
+     * <p>
      * This method handles edge cases where the projection of point p onto the segment lies
      * beyond either endpoint. It approximates the projection in a 2D lat/lng space.
      *
-     * @param p The point (LatLng) from which the distance is measured.
+     * @param p     The point (LatLng) from which the distance is measured.
      * @param start The starting point of the segment.
-     * @param end The ending point of the segment.
+     * @param end   The ending point of the segment.
      * @return The shortest distance in meters from point p to the segment vw.
      */
     private double distanceToSegment(LatLng p, LatLng start, LatLng end) {
@@ -384,9 +399,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
      * if there is a selected trail. Also centers the camera on the last recorded location and restarts
      * tracking after a short delay of 3 seconds.
      *
-     * @requires ACCESS_FINE_LOCATION and ACCESS_COARSE_LOCATION permissions.
-     *
      * @throws IllegalStateException if mMap is not initialized or currentTrail TrackPoint list is empty while tracking.
+     * @requires ACCESS_FINE_LOCATION and ACCESS_COARSE_LOCATION permissions.
      */
     @RequiresPermission(allOf = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION})
     private void displayCurrentTrail() {
@@ -402,10 +416,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (currentTrail.isEmpty() || !isTracking) {
             Toast.makeText(this, getString(R.string.no_saved_trail), Toast.LENGTH_SHORT).show();
             return;
-        }
-
-        if (selectedTrailPointList != null && !selectedTrailPointList.isEmpty()) {
-            displaySelectedTrail();
         }
 
         //Redraw on-trail and off-trail lines if they exist
@@ -429,6 +439,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         fusedLocationClient.removeLocationUpdates(locationCallback);
 
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (selectedTrailPointList != null && !selectedTrailPointList.isEmpty()) {
+                displaySelectedTrail();
+            }
             startHike();
         }, 3000);
     }
@@ -477,9 +490,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
      * for position and handles rotation wrap-around (0–360°) for smooth turning.
      * Runs on the main UI thread at approximately 60 frames per second.
      *
-     * @param marker      The marker to be animated.
-     * @param toPosition  The target LatLng position to move the marker to.
-     * @param toRotation  The target rotation angle in degrees (0–360°), relative to north.
+     * @param marker     The marker to be animated.
+     * @param toPosition The target LatLng position to move the marker to.
+     * @param toRotation The target rotation angle in degrees (0–360°), relative to north.
      */
     private void animateMarkerToPosition(final Marker marker, final LatLng toPosition, final float toRotation) {
         final LatLng startPosition = marker.getPosition();
@@ -522,7 +535,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
      * If the trail contains only one point, it places a single polyline segment at that location.
      * Otherwise, it draws the entire trail using a green polyline and adjusts the camera
      * to fit the trail's bounds with padding.
-     *
+     * <p>
      * If image markers are associated with the trailId, they are also displayed.
      */
     private void displaySelectedTrail() {
@@ -549,6 +562,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         mMap.addPolyline(selectedTrackLine);
         LatLngBounds bounds = boundsBuilder.build();
+        fusedLocationClient.removeLocationUpdates(locationCallback);
         final int padding = 300; // pixels
 
         if (selectedImages != null && !selectedImages.isEmpty()) {
@@ -567,10 +581,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(first, 15f));
             }
         });
+
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            startHike();
+        }, 3000);
     }
 
-    @RequiresPermission(allOf = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION})
     private void startHike() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                    ACCESS_LOCATION_REQUEST_CODE);
+            return;
+        }
+
         if (!isTracking) {
             currentTrail.clear();
             capturedImages.clear();
@@ -582,15 +607,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             userMarker.remove();
             userMarker = null;
         }
-
-        if (lastKnownLocation != null) {
-            showUserMarker(lastKnownLocation);
-        }
-
-
-        polylineOptions = new PolylineOptions()
-                .color(Color.GRAY)
-                .width(18);
 
         currentOnTrailPolylineOptions = new PolylineOptions()
                 .color(Color.GRAY)
@@ -606,11 +622,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .setFastestInterval(2000)  // Accept faster updates if available
                 .setMaxWaitTime(3000);
 
+        //initial location
         fusedLocationClient.getLastLocation()
                 .addOnSuccessListener(location -> {
                     if (location != null) {
                         LatLng startLatLng = new LatLng(location.getLatitude(), location.getLongitude());
                         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(startLatLng, 18f));
+                        showUserMarker(location);
                     }
                 });
 
@@ -663,8 +681,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         layout.addView(nameInput);
 
         final EditText descriptionInput = new EditText(this);
+        descriptionInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(100)});
         descriptionInput.setHint(getString(R.string.trail_description));
-        layout.addView(descriptionInput);
+        layout.addView(descriptionInput); // Add description input first
+
+        TextView charCounter = new TextView(this);
+        charCounter.setText("0/100");
+        charCounter.setTextSize(12);
+        charCounter.setTextColor(Color.GRAY);
+        charCounter.setGravity(Gravity.END);
+        layout.addView(charCounter); // Add counter right after input
+
+        descriptionInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                charCounter.setText(s.length() + "/100");
+            }
+
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void afterTextChanged(Editable s) {}
+        });
 
         new AlertDialog.Builder(this)
                 .setTitle(getString(R.string.save_trail_and_images))
@@ -696,8 +732,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     Toast.makeText(this, getString(R.string.trail_not_saved), Toast.LENGTH_SHORT).show();
                 })
                 .show();
+
         userMarker = null;
         mMap.clear();
+
     }
 
     private void dispatchTakePictureIntent() {
@@ -896,7 +934,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     /**
      * This function calculates the whole duration of a trail point list
-     * */
+     */
     private String calculateDurationInMillis(ArrayList<TrackPoint> trailPoints) {
         if (trailPoints.isEmpty()) return "0";
 
@@ -917,7 +955,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     /**
      * This function calcualtes total altitude changes within a trail point list
-     * */
+     */
     public AltitudeStats calculateAltitudeChanges(ArrayList<TrackPoint> points) {
         AltitudeStats stats = new AltitudeStats();
 
@@ -941,7 +979,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
      * @param trailPoints     - List of the trail points the user is following
      * @return
      */
-    private float calculateRemainingDistanceFromCurrent(Location currentLocation, ArrayList<TrackPoint> trailPoints) {
+    private float calculateRemainingDistanceFromCurrentLocation(Location currentLocation, ArrayList<TrackPoint> trailPoints) {
         // 1. Find nearest point on trail
         int nearestIndex = 0;
         float minDistance = Float.MAX_VALUE;
@@ -978,7 +1016,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     /**
      * This function calculates the median walking speed dynamically using recorded speed samples between trail points.
-     * */
+     */
     private float getMedianSpeed() {
         if (speedSamples.isEmpty()) return 1.39f; //default walking speed - 5km/h
 
@@ -1011,7 +1049,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     /**
      * This is to present the help information on the UI
-     * */
+     */
     private void updateTrailInfoUI(float totalTrailDistance, float remainingDistance, String eta, long breaksCount) {
         long seconds = breaksCount / 1000;
         long minutes = (seconds / 60) % 60;

@@ -48,11 +48,12 @@ public class TrailAdapter extends RecyclerView.Adapter<TrailAdapter.TrailViewHol
         holder.textAscend.setText(String.format("↑%.2f m", trail.getTotalAscent()));
         holder.textDescent.setText(String.format("↓%.2f m", trail.getTotalDescent()));
         holder.textDuration.setText(trail.getDuration());
+        holder.textDescription.setText(trail.getDescription());
 
         holder.btnViewTrail.setOnClickListener(v -> listener.onViewTrailClick(trail));
 
         holder.btnAddOrRemoveFromFavorites.setImageResource(
-                trail.isFavorite() ? R.drawable.trashbin_button : R.drawable.add_to_favorites
+                trail.isFavorite() ? R.drawable.remove_from_favorites : R.drawable.add_to_favorites
         );
         holder.btnAddOrRemoveFromFavorites.setOnClickListener(v ->
                 listener.onFavoriteClick(trail, holder.getAdapterPosition())
@@ -106,7 +107,7 @@ public class TrailAdapter extends RecyclerView.Adapter<TrailAdapter.TrailViewHol
     }
 
     public static class TrailViewHolder extends RecyclerView.ViewHolder {
-        TextView textTrailName, textDistance, textAscend, textDescent, textDuration;
+        TextView textTrailName, textDistance, textAscend, textDescent, textDuration, textDescription;
         ImageView imageTrail;
         Button btnViewTrail;
         ImageButton btnAddOrRemoveFromFavorites;
@@ -121,6 +122,7 @@ public class TrailAdapter extends RecyclerView.Adapter<TrailAdapter.TrailViewHol
             textDescent = itemView.findViewById(R.id.textDescent);
             textDuration = itemView.findViewById(R.id.textDuration);
             btnAddOrRemoveFromFavorites = itemView.findViewById(R.id.btnAddOrRemoveFromFavorites);
+            textDescription = itemView.findViewById(R.id.textDescription);
         }
     }
 

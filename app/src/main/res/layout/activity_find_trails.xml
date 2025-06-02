@@ -50,9 +50,8 @@
             android:layout_margin="2dp"
             android:layout_weight="1"
             android:text="@string/all"
-            android:textColorLink="#F4ECEC"
+            android:textColor="#FFFFFF"
             android:singleLine="true"
-            android:textColor="@color/white"
             android:backgroundTint="#000000"
             android:textSize="14sp" />
 
@@ -65,7 +64,6 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/my"
-            android:textColorLink="#F4ECEC"
             android:backgroundTint="#000000"
             android:layout_margin="2dp"
             android:textColor="@color/white"
@@ -80,7 +78,7 @@
             android:text="@string/photos"
             android:layout_weight="1"
             android:ellipsize="end"
-            android:textColor="@color/white"
+            android:textColor="#FFFFFF"
             android:backgroundTint="#000000"
             android:textSize="14sp"
             />

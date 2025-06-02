@@ -64,6 +64,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textSize="16sp"
+                        android:textColor="#FFFFFF"
                         android:backgroundTint="#43A047"
                         android:text="@string/start_hike" />
 
@@ -74,7 +75,7 @@
                         android:text="@string/stop_hike"
                         android:textSize="16sp"
                         android:backgroundTint="#D81B60"
-
+                        android:textColor="#FFFFFF"
                         android:layout_marginStart="8dp" />
 
                     <Button
@@ -83,6 +84,7 @@
                         android:layout_height="wrap_content"
                         android:text="@string/view_track"
                         android:backgroundTint="#6F6F6F"
+                        android:textColor="#FFFFFF"
                         android:layout_marginStart="8dp" />
                 </LinearLayout>
 
@@ -129,6 +131,7 @@
                         android:text="@string/find_trails"
                         android:textSize="20sp"
                         android:backgroundTint="#1E88E5"
+                        android:textColor="#FFFFFF"
                         android:layout_marginStart="8dp" />
                 </LinearLayout>
             </LinearLayout>

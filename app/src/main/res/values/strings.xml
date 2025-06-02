@@ -56,5 +56,6 @@
     <string name="trail_images_successfully_saved">The trails and photos were saved successfully.</string>
     <string name="format_break_info">Trail: %.1f km\nRemaining: %.1f km\nTime: %s\nBreak time: </string>
     <string name="help_info_default">Trail: 0.0 km\nRemaining: 0.0 km\nTime: 0:00\nBreaks: 0</string>
+    <string name="no_images_atm">Still no images for now</string>
 
 </resources>

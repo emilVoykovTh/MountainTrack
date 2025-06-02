@@ -228,6 +228,9 @@ public class FindTrailsActivity extends AppCompatActivity {
         btnViewImages.setOnClickListener(v -> {
             updateImageList();
             showImages();
+            if (allImages.isEmpty()) {
+                Toast.makeText(this, getString(R.string.no_images_atm), Toast.LENGTH_SHORT).show();
+            }
         });
 
         searchInput = findViewById(R.id.searchInput);

@@ -54,7 +54,8 @@
     <string name="photo_deleted">Снимката е изтрита!</string>
     <string name="no_saved_my_trails">Няма запазени мои маршрути</string>
     <string name="trail_images_successfully_saved">Маршрутът и снимките са запазени успешно.</string>
-    <string name="format_break_info">Маршрут: %.1f км\nОстават: %.1f км\nВреме: %s\nПочивки общо: </string>
+    <string name="format_break_info">Маршрут: %.1f км\nОстават: %.1f км\nВреме до цел: %s\nПочивки общо: </string>
     <string name="help_info_default">Маршрут: 0.0 км\nОстават: 0.0 км\nВреме: 0:00\nПочивки общо: 0</string>
+    <string name="no_images_atm">Все още нямате запазени снимки</string>
 
 </resources>
