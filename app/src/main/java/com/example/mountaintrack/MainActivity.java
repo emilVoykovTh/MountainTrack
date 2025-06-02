@@ -504,8 +504,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         handler.post(new Runnable() {
             @Override
             public void run() {
-                long elapsed = System.currentTimeMillis() - start;
-                float t = Math.min(1, (float) elapsed / ANIMATION_DURATION);
+                long elapsedTime = System.currentTimeMillis() - start;
+                float t = Math.min(1, (float) elapsedTime / ANIMATION_DURATION);
 
                 // Interpolate latitude and longitude
                 double lat = (toPosition.latitude - startPosition.latitude) * t + startPosition.latitude;
@@ -954,7 +954,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     /**
-     * This function calcualtes total altitude changes within a trail point list
+     * This function calculates the total altitude changes within a trail point list
      */
     public AltitudeStats calculateAltitudeChanges(ArrayList<TrackPoint> points) {
         AltitudeStats stats = new AltitudeStats();
@@ -1031,6 +1031,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    /**
+     * Estimates the time required to complete a trail based on its distance and the user's walking speed.
+     *
+     * This method calculates the expected duration in hours and minutes using the median walking speed
+     * (in meters per second) previously collected during the hike. If the walking speed is too low
+     * (e.g., due to no data), a default value of 1.0 m/s is used to avoid division by zero or unrealistic results.
+     *
+     * @param distanceMeters The total trail distance in meters.
+     * @return A formatted time string in "HH:mm" representing the estimated duration to complete the trail.
+     */
     private String estimateTimeForTrail(float distanceMeters) {
         float walkingSpeed = getMedianSpeed(); // in m/s
 
@@ -1045,7 +1055,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         return String.format(Locale.getDefault(), "%02d:%02d", hoursFinal, minutesFinal);
     }
-
 
     /**
      * This is to present the help information on the UI
@@ -1066,6 +1075,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         tvTrailHelpInfo.setText(info);
     }
 
+/**
+ * Detects whether the user has taken a break based on their movement and time spent stationary.
+ *
+ * This method checks the distance between the current location and the last stable position.
+ * If the user has not moved beyond a defined distance threshold for a certain time period,
+ * they are considered to be on a break, and the break time is recorded.
+ * If movement is detected beyond the threshold, the break status is reset.
+ *
+ * @param location - The current Location of the user.
+ *
+ * @Preconditions:
+ * - BREAK_DISTANCE_THRESHOLD defines the minimum distance (in meters) that qualifies as movement.
+ * - BREAK_TIME_THRESHOLD defines the duration (in milliseconds) the user must remain stationary to be considered on a break.
+ */
     private void handleBreakDetection(Location location) {
         long now = System.currentTimeMillis();
         LatLng currentPosition = new LatLng(location.getLatitude(), location.getLongitude());
@@ -1084,7 +1107,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         );
 
         if (result[0] > BREAK_DISTANCE_THRESHOLD) {
-            // Moved enough → reset
+            // Moved enough -> reset
             if (isOnBreak) {
                 isOnBreak = false;
             }
