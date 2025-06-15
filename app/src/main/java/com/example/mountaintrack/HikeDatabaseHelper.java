@@ -294,7 +294,7 @@ public class HikeDatabaseHelper extends SQLiteOpenHelper {
         values.put("latitude", image.getLatitude());
         values.put("longitude", image.getLongitude());
         values.put("timestamp", image.getTimestamp());
-        values.put("trailName", image.getNearestTrailName());
+        values.put("trailName", image.getTrailName());
 
         long result = db.insert("images", null, values);
         if (result == -1) {

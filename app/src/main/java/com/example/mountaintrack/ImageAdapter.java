@@ -70,7 +70,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
 
 
         // Set trail name
-        holder.fieldTrail.setText(imageData.getNearestTrailName());
+        holder.fieldTrail.setText(imageData.getTrailName());
 
         // View on map button
         holder.btnViewTrail.setOnClickListener(v -> listener.onViewImageOnMap(imageData));

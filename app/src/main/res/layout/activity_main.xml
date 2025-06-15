@@ -13,8 +13,46 @@
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent" />
 
+    <LinearLayout
+        android:id="@+id/zoomButtonsContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp"
+        android:padding="4dp"
+        app:layout_anchorGravity="top|end">
+
+        <Button
+            android:id="@+id/btnZoomIn"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginRight="1dp"
+            android:backgroundTint="#EEEEEE"
+            android:text="+"
+            android:layout_weight="1"
+            android:textColor="@android:color/black"
+            android:textSize="24sp"
+            android:gravity="center" />
+
+        <Button
+            android:id="@+id/btnZoomOut"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_margin="1dp"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#EEEEEE"
+            android:text="-"
+            android:layout_weight="1"
+            android:textColor="@android:color/black"
+            android:textSize="26sp"
+            android:gravity="center"
+            app:cornerRadius="23dp" />
+    </LinearLayout>
 
     <!-- Bottom Sheet (initially hidden, draggable up) -->
     <androidx.core.widget.NestedScrollView

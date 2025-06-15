@@ -18,16 +18,16 @@ public class ImageData implements Parcelable {
     private double latitude;
     private double longitude;
     private long timestamp;
-    private String nearestTrailName;
+    private String trailName;
 
-    public ImageData(int id, int trailId, String imagePath, double latitude, double longitude, long timestamp, String nearestTrailName) {
+    public ImageData(int id, int trailId, String imagePath, double latitude, double longitude, long timestamp, String trailName) {
         this.id = id;
         this.trailId = trailId;
         this.imagePath = imagePath;
         this.latitude = latitude;
         this.longitude = longitude;
         this.timestamp = timestamp;
-        this.nearestTrailName = nearestTrailName;
+        this.trailName = trailName;
     }
 
     // Parcelable constructor
@@ -38,7 +38,7 @@ public class ImageData implements Parcelable {
         latitude = in.readDouble();
         longitude = in.readDouble();
         timestamp = in.readLong();
-        nearestTrailName = in.readString();
+        trailName = in.readString();
     }
 
     // Parcelable.Creator implementation
@@ -68,7 +68,7 @@ public class ImageData implements Parcelable {
         parcel.writeDouble(latitude);
         parcel.writeDouble(longitude);
         parcel.writeLong(timestamp);
-        parcel.writeString(nearestTrailName);
+        parcel.writeString(trailName);
     }
 
 
@@ -96,12 +96,8 @@ public class ImageData implements Parcelable {
         return timestamp;
     }
 
-    public String getNearestTrailName() {
-        return nearestTrailName;
-    }
-
-    public void setNearestTrailName(String nearestTrailName) {
-        this.nearestTrailName = nearestTrailName;
+    public String getTrailName() {
+        return trailName;
     }
 
     public Uri getImageUri() {
