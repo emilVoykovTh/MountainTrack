@@ -107,7 +107,6 @@ public class HikeDatabaseHelper extends SQLiteOpenHelper {
         insertDefaultTrackPoint(db, 2, 42.56359562410901, 23.28081979307114, 2290, 1704105297L);// 10:34:57 Черни връх
     }
 
-
     private void insertDefaultTrackPoint(SQLiteDatabase db, int trailId, double lat, double lon, double alt, long timestamp) {
         ContentValues point = new ContentValues();
         point.put("trailId", trailId);
@@ -117,6 +116,7 @@ public class HikeDatabaseHelper extends SQLiteOpenHelper {
         point.put("timestamp", timestamp);
         db.insert("track_points", null, point);
     }
+
 
 
     @Override

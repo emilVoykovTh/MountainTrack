@@ -32,6 +32,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.widget.NestedScrollView;
 
 import com.google.android.gms.common.api.ResolvableApiException;
@@ -75,6 +78,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Marker userMarker;
     private ArrayList<ImageData> capturedImages, selectedImages;
     private ArrayList<TrackPoint> currentTrail, selectedTrailPointList;
+    private final ArrayList<Polyline> offTrailPolylines = new ArrayList<>();
+    private final ArrayList<Polyline> onTrailPolylines = new ArrayList<>();
+
     private PolylineOptions polylineOptions, currentOnTrailPolylineOptions, offTrailPolylineOptions;
     private Polyline currentOnTrailPolyline, offTrailPolyline;
     private static final float ON_TRAIL_DISTANCE_THRESHOLD = 20f, OFF_TRAIL_THRESHOLD = 30.0f; // meters
@@ -233,6 +239,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             isTracking = false;
                             currentTrail.clear();
                             selectedTrailPointList.clear();
+                            fusedLocationClient.removeLocationUpdates(locationCallback);
                             startActivity(new Intent(this, FindTrailsActivity.class));
                         })
                         .setNegativeButton(getString(R.string.cancel), null)
@@ -262,69 +269,124 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 for (Location location : locationResult.getLocations()) {
-                    if (location == null || !isTracking) {
-                        continue;
-                    } else {
-                        if (!location.hasAccuracy() || location.getAccuracy() > 10.0f) continue;
-                        if (location.hasSpeed() && location.getSpeed() > 0.25f) { // Filter out noise ( < 0.25 m/s)
-                            speedSamples.add(location.getSpeed()); // in m/s
-                        }
+                    if (location == null || !isTracking) continue;
 
-                        if (lastKnownLocation != null) {
-                            float distance = location.distanceTo(lastKnownLocation);
-                            if (distance < 2.0f && location.getSpeed() < 0.25f) {
-                                continue; // Skip GPS noise
-                            }
-                        }
+                    if (!location.hasAccuracy() || location.getAccuracy() > 10.0f) continue;
 
-                        double lat = location.getLatitude();
-                        double lng = location.getLongitude();
-                        double alt = location.getAltitude();
-                        LatLng latLng = new LatLng(lat, lng);
-                        lastKnownLocation = location;
-                        showUserMarker(lastKnownLocation);
-                        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18f));
-
-                        if (selectedTrailPointList != null && !selectedTrailPointList.isEmpty()) {
-                            float remainingDistance = calculateRemainingDistanceFromCurrentLocation(lastKnownLocation, selectedTrailPointList);
-                            handleBreakDetection(lastKnownLocation);
-                            String eta = estimateTimeForTrail(remainingDistance);
-                            updateTrailInfoUI(distanceOfSelectedTrail, remainingDistance, eta, totalBreakTimeMillis);
-                            boolean isOnTrail = isLocationNearSelectedTrail(latLng);
-
-                            if (isOnTrail) {
-                                currentOnTrailPolylineOptions.add(latLng);
-                                if (currentOnTrailPolyline != null) currentOnTrailPolyline.remove();
-                                currentOnTrailPolyline = mMap.addPolyline(currentOnTrailPolylineOptions);
-
-                                wasOnTrail = true; // Update state
-                            } else {
-                                if (wasOnTrail) {
-                                    // Just switched from on-trail to off-trail
-                                    offTrailPolylineOptions = new PolylineOptions()
-                                            .color(Color.RED)
-                                            .width(18);
-                                }
-
-                                offTrailPolylineOptions.add(latLng);
-                                if (offTrailPolyline != null) offTrailPolyline.remove();
-                                offTrailPolyline = mMap.addPolyline(offTrailPolylineOptions);
-
-                                wasOnTrail = false; // Update state
-                            }
-                        }
-                        // Check if current location is close to selected trail
-
-
-                        long currentTime = System.currentTimeMillis();
-
-                        // Save the current point
-                        TrackPoint point = new TrackPoint(0, lat, lng, alt, currentTime);
-                        currentTrail.add(point);
+                    if (location.hasSpeed() && location.getSpeed() > 0.25f) {
+                        speedSamples.add(location.getSpeed());
                     }
+
+                    if (lastKnownLocation != null) {
+                        float distance = location.distanceTo(lastKnownLocation);
+                        if (distance < 2.0f && location.getSpeed() < 0.25f) continue; // Skip GPS noise
+                    }
+
+                    double lat = location.getLatitude();
+                    double lng = location.getLongitude();
+                    double alt = location.getAltitude();
+                    LatLng latLng = new LatLng(lat, lng);
+                    showUserMarker(location);
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18f));
+
+                    boolean hasSelectedTrail = selectedTrailPointList != null && !selectedTrailPointList.isEmpty();
+
+                    if (hasSelectedTrail) {
+                        float remainingDistance = calculateRemainingDistanceFromCurrentLocation(location, selectedTrailPointList);
+                        handleBreakDetection(location);
+                        String eta = estimateTimeForTrail(remainingDistance);
+                        updateTrailInfoUI(distanceOfSelectedTrail, remainingDistance, eta, totalBreakTimeMillis);
+                        boolean isOnTrail = isLocationNearSelectedTrail(latLng);
+
+                        // Transition from on-trail to off-trail
+                        if (wasOnTrail && !isOnTrail) {
+                            offTrailPolylineOptions = new PolylineOptions()
+                                    .color(Color.RED)
+                                    .width(18);
+                            if (lastKnownLocation != null) {
+                                offTrailPolylineOptions.add(new LatLng(
+                                        lastKnownLocation.getLatitude(),
+                                        lastKnownLocation.getLongitude()));
+                            }
+                            offTrailPolylineOptions.add(latLng);
+                            Polyline newOffTrailPolyline = mMap.addPolyline(offTrailPolylineOptions);
+                            offTrailPolylines.add(newOffTrailPolyline);
+                            wasOnTrail = false;
+                        }
+                        // Transition from off-trail to on-trail
+                        else if (!wasOnTrail && isOnTrail) {
+                            currentOnTrailPolylineOptions = new PolylineOptions()
+                                    .color(Color.GRAY)
+                                    .width(18);
+                            if (lastKnownLocation != null) {
+                                currentOnTrailPolylineOptions.add(new LatLng(
+                                        lastKnownLocation.getLatitude(),
+                                        lastKnownLocation.getLongitude()));
+                            }
+                            currentOnTrailPolylineOptions.add(latLng);
+                            Polyline newOnTrailPolyline = mMap.addPolyline(currentOnTrailPolylineOptions);
+                            onTrailPolylines.add(newOnTrailPolyline);
+                            wasOnTrail = true;
+                        }
+                        // Continue current segment
+                        else if (isOnTrail) {
+                            if (onTrailPolylines.isEmpty()) {
+                                currentOnTrailPolylineOptions = new PolylineOptions()
+                                        .color(Color.GRAY)
+                                        .width(18)
+                                        .add(latLng);
+                                Polyline polyline = mMap.addPolyline(currentOnTrailPolylineOptions);
+                                onTrailPolylines.add(polyline);
+                            } else {
+                                Polyline lastPolyline = onTrailPolylines.get(onTrailPolylines.size() - 1);
+                                ArrayList<LatLng> points = new ArrayList<>(lastPolyline.getPoints());
+                                points.add(latLng);
+                                lastPolyline.setPoints(points);
+                            }
+                            wasOnTrail = true;
+                        } else {
+                            if (offTrailPolylines.isEmpty()) {
+                                offTrailPolylineOptions = new PolylineOptions()
+                                        .color(Color.RED)
+                                        .width(18)
+                                        .add(latLng);
+                                Polyline polyline = mMap.addPolyline(offTrailPolylineOptions);
+                                offTrailPolylines.add(polyline);
+                            } else {
+                                Polyline lastPolyline = offTrailPolylines.get(offTrailPolylines.size() - 1);
+                                ArrayList<LatLng> points = new ArrayList<>(lastPolyline.getPoints());
+                                points.add(latLng);
+                                lastPolyline.setPoints(points);
+                            }
+                            wasOnTrail = false;
+                        }
+                    } else {
+                        // No selected trail – always draw GRAY continuous line
+                        if (onTrailPolylines.isEmpty()) {
+                            currentOnTrailPolylineOptions = new PolylineOptions()
+                                    .color(Color.GRAY)
+                                    .width(18)
+                                    .add(latLng);
+                            Polyline polyline = mMap.addPolyline(currentOnTrailPolylineOptions);
+                            onTrailPolylines.add(polyline);
+                        } else {
+                            Polyline lastPolyline = onTrailPolylines.get(onTrailPolylines.size() - 1);
+                            ArrayList<LatLng> points = new ArrayList<>(lastPolyline.getPoints());
+                            points.add(latLng);
+                            lastPolyline.setPoints(points);
+                        }
+                        wasOnTrail = false;
+                    }
+
+                    // Save location
+                    lastKnownLocation = location;
+                    long currentTime = System.currentTimeMillis();
+                    TrackPoint point = new TrackPoint(0, lat, lng, alt, currentTime);
+                    currentTrail.add(point);
                 }
             }
         };
+
 
         // getting the selected trail from FindTrailsActivity
         Intent intent = getIntent();
@@ -359,6 +421,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         sheetBehavior.setHideable(false);  // so bottom sheet cannot be hidden completely
 
         sheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+
+        // Приложи отстъп отдолу, за да избегнеш навигационните бутони
+        ViewCompat.setOnApplyWindowInsetsListener(bottomSheet, (v, insets) -> {
+            Insets systemBarInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(
+                    v.getPaddingLeft(),
+                    v.getPaddingTop(),
+                    v.getPaddingRight(),
+                    systemBarInsets.bottom  // Това избутва съдържанието нагоре
+            );
+            return insets;
+        });
+
 
     }
 
@@ -456,67 +531,45 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             Toast.makeText(this, getString(R.string.map_not_ready), Toast.LENGTH_SHORT).show();
             return;
         }
+
         if (userMarker != null) {
             userMarker.remove();
             userMarker = null;
         }
 
-        if (currentTrail.isEmpty() || !isTracking) {
+        if (currentTrail.isEmpty()) {
             Toast.makeText(this, getString(R.string.no_saved_trail), Toast.LENGTH_SHORT).show();
             return;
         }
-/*
-        //Move camera to latest location
-        LatLng startLatLng = new LatLng(
-                currentTrail.get(currentTrail.size() - 1).getLatitude(),
-                currentTrail.get(currentTrail.size() - 1).getLongitude()
-        );
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(startLatLng, 18f));
 
-        fusedLocationClient.removeLocationUpdates(locationCallback);
-
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (selectedTrailPointList != null && !selectedTrailPointList.isEmpty()) {
-                displaySelectedTrail();
-            }
-            startHike();
-        }, 3000);*/
-
-        PolylineOptions currentTrackLine = new PolylineOptions().color(Color.GRAY).width(18);
+        // Calculate bounds of current trail
         LatLngBounds.Builder boundsBuilder = new LatLngBounds.Builder();
-
         for (TrackPoint point : currentTrail) {
             LatLng latLng = new LatLng(point.getLatitude(), point.getLongitude());
-            currentTrackLine.add(latLng);
             boundsBuilder.include(latLng);
         }
-
-        mMap.addPolyline(currentTrackLine);
         LatLngBounds bounds = boundsBuilder.build();
-        fusedLocationClient.removeLocationUpdates(locationCallback);
-        final int padding = 300; // pixels
 
-        if (capturedImages != null && !capturedImages.isEmpty()) {
-            for (ImageData image : capturedImages) {
-                showImageMarkerOnMap(image.getLatitude(), image.getLongitude(), image.getImagePath());
-            }
-        }
+        final int padding = 300; // padding for zoom
 
         mMap.setOnMapLoadedCallback(() -> {
             try {
                 mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding));
             } catch (Exception e) {
                 e.printStackTrace();
-                // fallback to first point zoom
-                LatLng first = new LatLng(selectedTrailPointList.get(0).getLatitude(), selectedTrailPointList.get(0).getLongitude());
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(first, 15f));
+                if (!currentTrail.isEmpty()) {
+                    LatLng first = new LatLng(currentTrail.get(0).getLatitude(), currentTrail.get(0).getLongitude());
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(first, 15f));
+                }
             }
         });
 
+        // Optionally start hike after camera animation
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             startHike();
         }, 3000);
     }
+
 
 
     private void showUserMarker(Location location) {
@@ -634,7 +687,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         mMap.addPolyline(selectedTrackLine);
         LatLngBounds bounds = boundsBuilder.build();
-        fusedLocationClient.removeLocationUpdates(locationCallback);
+
+        if (isTracking){
+            fusedLocationClient.removeLocationUpdates(locationCallback);
+        }
+
         final int padding = 300; // pixels
 
         if (selectedImages != null && !selectedImages.isEmpty()) {
@@ -654,9 +711,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            startHike();
-        }, 3000);
+        if (isTracking) {
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                startHike();
+            }, 3000);
+        }
     }
 
     private void startHike() {
@@ -737,7 +796,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         isTracking = false;
         fusedLocationClient.removeLocationUpdates(locationCallback);
 
-        if (currentTrail.isEmpty()) {
+        if (currentTrail.isEmpty() || currentTrail == null) {
             Toast.makeText(this, getString(R.string.no_saved_trail_for_stopping), Toast.LENGTH_SHORT).show();
             mMap.clear();
             userMarker = null;
@@ -812,12 +871,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         userMarker = null;
         mMap.clear();
-
-        if (!isTracking) {
-
-        }
-
-
+        currentTrail.clear();
+        updateTrailInfoUI(0, 0,"0.00", 0);
     }
 
     private void dispatchTakePictureIntent() {
