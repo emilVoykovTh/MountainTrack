@@ -273,10 +273,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     if (!location.hasAccuracy() || location.getAccuracy() > 10.0f) continue;
 
-                    if (location.hasSpeed() && location.getSpeed() > 0.25f) {
-                        speedSamples.add(location.getSpeed());
-                    }
-
                     if (lastKnownLocation != null) {
                         float distance = location.distanceTo(lastKnownLocation);
                         if (distance < 2.0f && location.getSpeed() < 0.25f) continue; // Skip GPS noise
@@ -290,6 +286,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18f));
 
                     boolean hasSelectedTrail = selectedTrailPointList != null && !selectedTrailPointList.isEmpty();
+
+                    if (location.hasSpeed() && location.getSpeed() > 0.25f) {
+                        speedSamples.add(location.getSpeed());
+                    }
 
                     if (hasSelectedTrail) {
                         float remainingDistance = calculateRemainingDistanceFromCurrentLocation(location, selectedTrailPointList);
@@ -422,7 +422,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         sheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
 
-        // Приложи отстъп отдолу, за да избегнеш навигационните бутони
         ViewCompat.setOnApplyWindowInsetsListener(bottomSheet, (v, insets) -> {
             Insets systemBarInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(
@@ -866,12 +865,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 })
                 .setNegativeButton(getString(R.string.no), (dialog, which) -> {
                     Toast.makeText(this, getString(R.string.trail_not_saved), Toast.LENGTH_SHORT).show();
+                    currentTrail.clear();
                 })
                 .show();
 
         userMarker = null;
         mMap.clear();
-        currentTrail.clear();
         updateTrailInfoUI(0, 0,"0.00", 0);
     }
 
@@ -1080,6 +1079,50 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     /**
+     * This function calculates the median walking speed dynamically using recorded speed samples between trail points.
+     */
+    private float getMedianSpeed() {
+        if (speedSamples.isEmpty()) return 1.39f; // default 5 km/h
+
+        ArrayList<Float> sorted = new ArrayList<>(speedSamples);
+        Collections.sort(sorted);
+
+        int size = sorted.size();
+        if (size % 2 == 0) {
+            return (sorted.get(size / 2 - 1) + sorted.get(size / 2)) / 2f;
+        } else {
+            return sorted.get(size / 2);
+        }
+    }
+
+    /**
+     * Estimates the time required to complete a trail based on its distance and the user's walking speed.
+     *
+     * This method calculates the expected duration in hours and minutes using the median walking speed
+     * (in meters per second) previously collected during the hike. If the walking speed is too low
+     * (e.g., due to no data), a default value of 1.0 m/s is used to avoid division by zero or unrealistic results.
+     *
+     * @param distanceMeters The total trail distance in meters.
+     * @return A formatted time string in "HH:mm" representing the estimated duration to complete the trail.
+     */
+    private String estimateTimeForTrail(float distanceMeters) {
+        float walkingSpeed = getMedianSpeed();
+
+        // Use default if speed is unrealistically low
+        if (walkingSpeed < 0.1f) {
+            walkingSpeed = 1.39f;
+        }
+
+        float timeInSeconds = distanceMeters / walkingSpeed;
+
+        int totalMinutes = (int) (timeInSeconds / 60);
+        int hoursFinal = totalMinutes / 60;
+        int minutesFinal = totalMinutes % 60;
+
+        return String.format(Locale.getDefault(), "%02d:%02d", hoursFinal, minutesFinal);
+    }
+
+    /**
      * Find the nearest point on the trail from the current location.
      * Calculate the distance from that point to the end of the trail.
      *
@@ -1120,48 +1163,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         return remainingDistance + minDistance; // include distance from current to nearest point
-    }
-
-    /**
-     * This function calculates the median walking speed dynamically using recorded speed samples between trail points.
-     */
-    private float getMedianSpeed() {
-        if (speedSamples.isEmpty()) return 1.39f; //default walking speed - 5km/h
-
-        ArrayList<Float> sorted = new ArrayList<>(speedSamples);
-        Collections.sort(sorted);
-
-        int size = sorted.size();
-        if (size % 2 == 0) {
-            return (sorted.get(size / 2 - 1) + sorted.get(size / 2)) / 2f;
-        } else {
-            return sorted.get(size / 2);
-        }
-    }
-
-    /**
-     * Estimates the time required to complete a trail based on its distance and the user's walking speed.
-     *
-     * This method calculates the expected duration in hours and minutes using the median walking speed
-     * (in meters per second) previously collected during the hike. If the walking speed is too low
-     * (e.g., due to no data), a default value of 1.0 m/s is used to avoid division by zero or unrealistic results.
-     *
-     * @param distanceMeters The total trail distance in meters.
-     * @return A formatted time string in "HH:mm" representing the estimated duration to complete the trail.
-     */
-    private String estimateTimeForTrail(float distanceMeters) {
-        float walkingSpeed = getMedianSpeed(); // in m/s
-
-        // Avoid division by zero
-        if (walkingSpeed < 0.1f) walkingSpeed = 1.0f;
-
-        float timeInSeconds = distanceMeters / walkingSpeed;
-
-        int totalMinutes = (int) (timeInSeconds / 60);
-        int hoursFinal = totalMinutes / 60;
-        int minutesFinal = totalMinutes % 60;
-
-        return String.format(Locale.getDefault(), "%02d:%02d", hoursFinal, minutesFinal);
     }
 
     /**

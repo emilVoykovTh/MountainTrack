@@ -29,31 +29,30 @@
 
         <Button
             android:id="@+id/btnZoomIn"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@android:style/Widget.Button"
             android:layout_width="46dp"
             android:layout_height="46dp"
             android:layout_marginRight="1dp"
-            android:backgroundTint="#EEEEEE"
-            android:text="+"
             android:layout_weight="1"
+            android:backgroundTint="#FFEEEEEE"
+            android:gravity="center"
+            android:text="+"
             android:textColor="@android:color/black"
-            android:textSize="24sp"
-            android:gravity="center" />
+            android:textSize="24sp"/>
 
         <Button
             android:id="@+id/btnZoomOut"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@android:style/Widget.Button"
             android:layout_width="46dp"
             android:layout_height="46dp"
             android:layout_margin="1dp"
             android:layout_marginTop="8dp"
-            android:backgroundTint="#EEEEEE"
-            android:text="-"
             android:layout_weight="1"
-            android:textColor="@android:color/black"
-            android:textSize="26sp"
+            android:backgroundTint="#FFEEEEEE"
             android:gravity="center"
-            app:cornerRadius="23dp" />
+            android:text="-"
+            android:textColor="@android:color/black"
+            android:textSize="26sp"/>
     </LinearLayout>
 
     <!-- Bottom Sheet (initially hidden, draggable up) -->
