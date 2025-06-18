@@ -871,8 +871,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 })
                 .show();
 
-        mMap.clear();
-        updateTrailInfoUI(0, 0,"0.00", 0);
+
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            currentTrail.clear();
+            capturedImages.clear();
+            mMap.clear();
+            updateTrailInfoUI(0, 0, "0.00", 0);
+        }, 500);
     }
 
     private void dispatchTakePictureIntent() {
