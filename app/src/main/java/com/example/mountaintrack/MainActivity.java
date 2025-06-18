@@ -238,6 +238,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         .setPositiveButton(getString(R.string.yes), (d, w) -> {
                             isTracking = false;
                             currentTrail.clear();
+                            capturedImages.clear();
                             selectedTrailPointList.clear();
                             fusedLocationClient.removeLocationUpdates(locationCallback);
                             startActivity(new Intent(this, FindTrailsActivity.class));
@@ -268,6 +269,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
+                if (!isTracking) return;
                 for (Location location : locationResult.getLocations()) {
                     if (location == null || !isTracking) continue;
 
@@ -275,7 +277,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     if (lastKnownLocation != null) {
                         float distance = location.distanceTo(lastKnownLocation);
-                        if (distance < 2.0f && location.getSpeed() < 0.25f) continue; // Skip GPS noise
+                        if (distance < 2.0f || location.getSpeed() < 0.25f) continue; // Skip GPS noise
                     }
 
                     double lat = location.getLatitude();
@@ -541,6 +543,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             return;
         }
 
+        fusedLocationClient.removeLocationUpdates(locationCallback);
+
         // Calculate bounds of current trail
         LatLngBounds.Builder boundsBuilder = new LatLngBounds.Builder();
         for (TrackPoint point : currentTrail) {
@@ -563,10 +567,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
-        // Optionally start hike after camera animation
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            startHike();
-        }, 3000);
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                startHike();
+            }, 3000);
+
     }
 
 
@@ -731,7 +735,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             currentTrail.clear();
             capturedImages.clear();
             speedSamples.clear();
-
             isTracking = true;
         }
 
@@ -792,18 +795,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @RequiresPermission(allOf = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION})
     private void stopHike() {
+
         isTracking = false;
+        userMarker = null;
         fusedLocationClient.removeLocationUpdates(locationCallback);
 
-        if (currentTrail.isEmpty() || currentTrail == null) {
+        if (currentTrail == null || currentTrail.isEmpty()) {
             Toast.makeText(this, getString(R.string.no_saved_trail_for_stopping), Toast.LENGTH_SHORT).show();
             mMap.clear();
-            userMarker = null;
             return;
         }
 
-        displayCurrentTrail();
-        if (selectedTrailPointList != null && selectedTrailPointList.isEmpty()) {
+        if (selectedTrailPointList != null && !selectedTrailPointList.isEmpty()) {
             selectedTrailPointList.clear();
         }
 
@@ -865,11 +868,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 })
                 .setNegativeButton(getString(R.string.no), (dialog, which) -> {
                     Toast.makeText(this, getString(R.string.trail_not_saved), Toast.LENGTH_SHORT).show();
-                    currentTrail.clear();
                 })
                 .show();
 
-        userMarker = null;
         mMap.clear();
         updateTrailInfoUI(0, 0,"0.00", 0);
     }
