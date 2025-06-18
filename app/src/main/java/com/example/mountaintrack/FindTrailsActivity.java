@@ -104,11 +104,11 @@ public class FindTrailsActivity extends AppCompatActivity {
                         .setTitle(getString(R.string.trail_deletion))
                         .setMessage(getString(R.string.deletion_question_part1) + trail.getName() + getString(R.string.deletion_question_part2))
                         .setPositiveButton(getString(R.string.yes), (dialog, which) -> {
-                            dbHelper.deleteTrailById(trail.getId());
                             dbHelper.deleteTrackPointsByTrailId(trail.getId());
                             dbHelper.deleteImagesByTrailId(trail.getId());
                             trailsList.remove(position);
                             trailsAdapter.updateList(trailsList);
+                            dbHelper.deleteTrailById(trail.getId());
                             Toast.makeText(FindTrailsActivity.this, getString(R.string.trail_deleted), Toast.LENGTH_SHORT).show();
                         })
                         .setNegativeButton(getString(R.string.no), null)

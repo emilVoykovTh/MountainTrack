@@ -240,6 +240,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             currentTrail.clear();
                             capturedImages.clear();
                             selectedTrailPointList.clear();
+                            speedSamples.clear();
                             fusedLocationClient.removeLocationUpdates(locationCallback);
                             startActivity(new Intent(this, FindTrailsActivity.class));
                         })
@@ -273,7 +274,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 for (Location location : locationResult.getLocations()) {
                     if (location == null || !isTracking) continue;
 
-                    if (!location.hasAccuracy() || location.getAccuracy() > 10.0f) continue;
+                    if (!location.hasAccuracy() || location.getAccuracy() > 8.0f) continue;
 
                     if (lastKnownLocation != null) {
                         float distance = location.distanceTo(lastKnownLocation);
@@ -713,12 +714,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(first, 15f));
             }
         });
-
-        if (isTracking) {
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                startHike();
-            }, 3000);
-        }
     }
 
     private void startHike() {
@@ -797,17 +792,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void stopHike() {
 
         isTracking = false;
-        userMarker = null;
         fusedLocationClient.removeLocationUpdates(locationCallback);
 
         if (currentTrail == null || currentTrail.isEmpty()) {
             Toast.makeText(this, getString(R.string.no_saved_trail_for_stopping), Toast.LENGTH_SHORT).show();
             mMap.clear();
+            if (selectedTrailPointList != null && !selectedTrailPointList.isEmpty()) {
+                selectedTrailPointList.clear();
+            }
             return;
         }
 
         if (selectedTrailPointList != null && !selectedTrailPointList.isEmpty()) {
             selectedTrailPointList.clear();
+            updateTrailInfoUI(0, 0, "0.00", 0);
         }
 
         LinearLayout layout = new LinearLayout(this);
@@ -868,16 +866,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 })
                 .setNegativeButton(getString(R.string.no), (dialog, which) -> {
                     Toast.makeText(this, getString(R.string.trail_not_saved), Toast.LENGTH_SHORT).show();
+                    currentTrail.clear();
+                    capturedImages.clear();
+                    speedSamples.clear();
                 })
                 .show();
-
-
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            currentTrail.clear();
-            capturedImages.clear();
-            mMap.clear();
-            updateTrailInfoUI(0, 0, "0.00", 0);
-        }, 500);
+        userMarker = null;
+        mMap.clear();
     }
 
     private void dispatchTakePictureIntent() {
