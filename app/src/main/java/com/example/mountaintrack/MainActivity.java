@@ -274,7 +274,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 for (Location location : locationResult.getLocations()) {
                     if (location == null || !isTracking) continue;
 
-                    if (!location.hasAccuracy() || location.getAccuracy() > 8.0f) continue;
+                    if (!location.hasAccuracy() && location.getAccuracy() > 8.0f) continue;
 
                     if (lastKnownLocation != null) {
                         float distance = location.distanceTo(lastKnownLocation);
@@ -586,7 +586,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             bearing = 0f;
         }
 
-        // Smooth the bearing to avoid sudden jumps (low-pass filter)
+        // Smooth the bearing to avoid sudden jumps
         bearing = smoothBearing(lastBearing, bearing, 0.2f);
         lastBearing = bearing;
 
@@ -790,8 +790,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @RequiresPermission(allOf = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION})
     private void stopHike() {
-
-        isTracking = false;
         fusedLocationClient.removeLocationUpdates(locationCallback);
 
         if (currentTrail == null || currentTrail.isEmpty()) {
@@ -869,8 +867,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     currentTrail.clear();
                     capturedImages.clear();
                     speedSamples.clear();
+                    updateTrailInfoUI(0, 0, "0.00", 0);
                 })
                 .show();
+        isTracking = false;
         userMarker = null;
         mMap.clear();
     }

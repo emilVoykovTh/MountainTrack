@@ -214,16 +214,33 @@ public class HikeDatabaseHelper extends SQLiteOpenHelper {
         return points;
     }
 
+    /**
+     * This method compares each ID with the next (id + 1) to find the first gap.
+     *
+     * Example: if existing IDs are 1, 2, 4 → it will find 3 as the next available.
+     *
+     * If there are no gaps, it returns MAX(id) + 1 as fallback.
+     *
+     * */
     public int getNextAvailableTrailId() {
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT MAX(id) FROM trails", null);
-        int nextId = 1;
+
+        // Find the smallest unused ID (starting from 1)
+        Cursor cursor = db.rawQuery(
+                "SELECT MIN(t1.id + 1) AS nextId " +
+                        "FROM trails t1 " +
+                        "LEFT JOIN trails t2 ON t2.id = t1.id + 1 " +
+                        "WHERE t2.id IS NULL", null);
+
+        int nextId = 1; // default if table is empty
         if (cursor.moveToFirst() && !cursor.isNull(0)) {
-            nextId = cursor.getInt(0) + 1;
+            nextId = cursor.getInt(0);
         }
+
         cursor.close();
         return nextId;
     }
+
 
     public void deleteTrackPointsByTrailId(int trailId) {
         SQLiteDatabase db = this.getWritableDatabase();
