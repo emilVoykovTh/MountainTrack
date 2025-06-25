@@ -13,7 +13,7 @@ import java.util.List;
 public class HikeDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "hike.db";
-    private static final int DATABASE_VERSION = 6;
+    private static final int DATABASE_VERSION = 7;
 
     public HikeDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);

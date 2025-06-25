@@ -106,35 +106,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private boolean isOnBreak = false, wasOnTrail = true;
     private Button btnZoomIn, btnZoomOut;
 
-    private void showImageMarkerOnMap(double lat, double lng, String imagePath) {
-        LatLng imageLocation = new LatLng(lat, lng);
-
-        Marker marker;
-        if (isTracking) {
-            marker = mMap.addMarker(new MarkerOptions()
-                    .position(imageLocation)
-                    .title(getString(R.string.photo))
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
-        } else {
-            marker = mMap.addMarker(new MarkerOptions()
-                    .position(imageLocation)
-                    .title(getString(R.string.photo))
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
-        }
-        marker.setTag(imagePath);
-
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(imageLocation, 18f));
-
-        mMap.setOnMarkerClickListener(clickedMarker -> {
-            Object tag = clickedMarker.getTag();
-            if (tag instanceof String) {
-                showImageDialog((String) tag);
-                return true; // consume the click
-            }
-            return false;
-        });
-    }
-
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -195,7 +166,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         selectedImages = new ArrayList<>();
         selectedTrailPointList = new ArrayList<>();
         tvTrailHelpInfo = findViewById(R.id.tvTrailInfo);
-
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -270,11 +240,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
-                if (!isTracking) return;
                 for (Location location : locationResult.getLocations()) {
                     if (location == null || !isTracking) continue;
 
-                    if (!location.hasAccuracy() && location.getAccuracy() > 8.0f) continue;
+                    if (!location.hasAccuracy() || location.getAccuracy() > 8.0f) continue;
+                    showUserMarker(location);
 
                     if (lastKnownLocation != null) {
                         float distance = location.distanceTo(lastKnownLocation);
@@ -285,7 +255,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     double lng = location.getLongitude();
                     double alt = location.getAltitude();
                     LatLng latLng = new LatLng(lat, lng);
-                    showUserMarker(location);
                     mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18f));
 
                     boolean hasSelectedTrail = selectedTrailPointList != null && !selectedTrailPointList.isEmpty();
@@ -569,6 +538,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                showUserMarker(lastKnownLocation);
                 startHike();
             }, 3000);
 
@@ -722,7 +692,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
                     ACCESS_LOCATION_REQUEST_CODE);
-            return;
         }
 
         //When starting hike for the first time
@@ -749,7 +718,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         LocationRequest locationRequest = LocationRequest.create()
                 .setPriority(Priority.PRIORITY_HIGH_ACCURACY)  // Highest GPS accuracy
                 .setInterval(4000)      // Request location every 4 seconds
-                .setFastestInterval(2000)  // Accept faster updates if available
+                .setFastestInterval(1000)  // Accept faster updates if available
                 .setMaxWaitTime(3000);
 
         //initial location
@@ -803,7 +772,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (selectedTrailPointList != null && !selectedTrailPointList.isEmpty()) {
             selectedTrailPointList.clear();
-            updateTrailInfoUI(0, 0, "0.00", 0);
         }
 
         LinearLayout layout = new LinearLayout(this);
@@ -867,11 +835,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     currentTrail.clear();
                     capturedImages.clear();
                     speedSamples.clear();
-                    updateTrailInfoUI(0, 0, "0.00", 0);
                 })
                 .show();
-        isTracking = false;
+        updateTrailInfoUI(0, 0, "0.00", 0);
+
         userMarker = null;
+        isTracking = false;
         mMap.clear();
     }
 
@@ -935,7 +904,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 for (ImageData image : capturedImages) {
                     showImageMarkerOnMap(image.getLatitude(), image.getLongitude(), image.getImagePath());
                 }
-
                 Toast.makeText(this, getString(R.string.image_saved) + currentPhotoPath, Toast.LENGTH_SHORT).show();
             }
         }
@@ -1231,6 +1199,35 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 isOnBreak = true;
             }
         }
+    }
+
+    private void showImageMarkerOnMap(double lat, double lng, String imagePath) {
+        LatLng imageLocation = new LatLng(lat, lng);
+
+        Marker marker;
+        if (isTracking) {
+            marker = mMap.addMarker(new MarkerOptions()
+                    .position(imageLocation)
+                    .title(getString(R.string.photo))
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
+        } else {
+            marker = mMap.addMarker(new MarkerOptions()
+                    .position(imageLocation)
+                    .title(getString(R.string.photo))
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+        }
+        marker.setTag(imagePath);
+
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(imageLocation, 18f));
+
+        mMap.setOnMarkerClickListener(clickedMarker -> {
+            Object tag = clickedMarker.getTag();
+            if (tag instanceof String) {
+                showImageDialog((String) tag);
+                return true; // consume the click
+            }
+            return false;
+        });
     }
 
 }

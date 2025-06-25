@@ -158,9 +158,14 @@ public class FindTrailsActivity extends AppCompatActivity {
         recyclerImages.setAdapter(imageAdapter);
 
         Intent intent = getIntent();
-        if (intent.hasExtra("trailPoints") && intent.hasExtra("trailImages")) {
+        if (intent.hasExtra("trailPoints")) {
             ArrayList<TrackPoint> trailPoints = getIntent().getParcelableArrayListExtra("trailPoints");
-            ArrayList<ImageData> trailImages = getIntent().getParcelableArrayListExtra("trailImages");
+            ArrayList<ImageData> trailImages = new ArrayList<>();
+
+            if (intent.hasExtra("trailImages")){
+                trailImages = getIntent().getParcelableArrayListExtra("trailImages");
+            }
+
             String trailName = getIntent().getStringExtra("trailName");
             String duration = getIntent().getStringExtra("trailDuration");
             String trailDescription = getIntent().getStringExtra("trailDescription");
